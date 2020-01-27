@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>GoShimmer - Network Visualizer</title>
+  <script type="text/javascript" src="./js/v3_min.js"></script>
+  <script type="text/javascript" src="./js/main.js"></script>
+  <link rel="stylesheet" type="text/css" href="./css/normalize.css">
+</head>
+
+<body onload='onLoad()' style="background: #202126;">
+  <div id="logo">
+      <p id="title">GOSHIMMER<br>NETWORK</p>
+    <img class="logo" src="./img/gos.png" alt="logo">
+  </div>
+  <img id="qr" src="./img/qr.png" alt="qr code">
+  <div id="graphc"></div>
+  <div id="nfo">
+    <p id="stat"></p>
+    <p id="streamstat"></p>
+    <p id="onlinenodesp">
+      <label for="onlinenodes">[ MENU: ]</label>
+      <select id="onlinenodes">    
+          <option value="info">...</option>
+          <optgroup label="[ NETWORK ANALYSIS ]">
+              <option value="bc">betweenness centrality</option>
+              <option value="cc">closeness centrality</option>
+              <option value="dc">degree centrality</option>
+              <option value="ec">eccentricity centrality</option>
+              <option value="cw">chinese whispers (clustering >= 6)</option>
+            </optgroup>
+            <optgroup id="nds" label="[ HIGHLIGHT NODE>NEIGHBORS ]">
+              </optgroup>
+      </select></p>
+
+    <div id="nodestath"></div>
+    <div id="nodestat">
+      <p id="in"></p>
+      <p id="out"></p>
+    </div>
+  </div>
+
+  <!-- <div id="donate">
+    <p id="ctxt"></p>
+    <p id="scale"><img src="./img/scale.png" alt="scale"></p>
+    <p class="add"><span onmouseover="qrmouseOver()" onmouseout="qrmouseOut()">SHOW QR-CODE</span><span class="heart"> &#10084; </span>GTOWWHCJMEDWFGYOWMSDQDPPKOBFMMMDJRAAM9NCFUGL9MNHBNDZOQTBWTFRAZXR9SZUPJFVUXFZTPTUBSFCFXXMVD</p>
+  </div> -->
+</body>
+
+</html>

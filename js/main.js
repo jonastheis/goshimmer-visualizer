@@ -1,11 +1,11 @@
 const ANALYSIS_SERVER_URL = "116.202.49.178" + "/datastream";
 
 class Frontend {
-    setStatus(msg) {
+    setStatusMessage(msg) {
         document.getElementById("status").innerHTML = msg;
     }
 
-    setStreamStatus(msg) {
+    setStreamStatusMessage(msg) {
         document.getElementById("streamstatus").innerHTML = msg;
     }
 }
@@ -24,53 +24,93 @@ class Datastructure {
         return "nodes online: " + this.nodesOnline.size + "(" + this.nodesDisconnected.size + ")" + " - IDs: " + this.nodes.size + " - edges: " + this.connections.size;
     }
 
-    updateStatus() {
-        // TODO: calculateDiscNodes();
-        this.app.frontend.setStatus(this.getStatusText());
-    }
-
     addNode(idA) {
         if(!this.nodes.has(idA)) {
             this.nodes.add(idA);
 
-            if(this.app.rendered === 1) {
-                this.app.frontend.setStreamStatus("addedToNodepool: " + idA);
-                this.updateStatus();
-            }
+            this.app.setStreamStatusMessage("addedToNodepool: " + idA);
+            this.app.updateStatus();
         }
     }
 
-    setNodeOnline(idA) {
-        if(this.nodes.has(idA)) {
-            // check if in nodesOnline set
-            if(!this.nodesOnline.has(idA)) {
-                this.nodesOnline.add(idA);
-                // TODO: add to graph
-                // graph.addNode(idA);
+    removeNode() {
+        if(this.nodesOnline.has(idA)) {
+            this.nodesOnline.delete(idA);
+            // TODO: graph.removeNode(idA);
 
-                if(this.app.rendered) {
-                    this.frontend.setStreamStatus("setNodeOnline: " + idA)
-                    this.updateStatus();
-                }
-            } else {
-                if(this.app.rendered) {
-                    this.frontend.setStreamStatus("setNodeOnline skipped: " + idA)
-                }
-            }
-
-            // check if in nodesOffline set
-            if(!this.nodesOffline.has(idA)) {
-                this.nodesOffline.delete(idA);
-
-                if(this.app.rendered) {
-                    this.frontend.setStreamStatus("removedFromOfflinepool: " + idA)
-                    this.updateStatus();
-                }
-            }
-
-        } else {
-            console.error("setNodeOnline but not in nodes list:", idA);
+            this.app.setStreamStatusMessage("removeNode from onlinepool: " + idA);
         }
+        
+        if(this.nodesOffline.has(idA)) {
+            this.nodesOffline.delete(idA);
+            this.app.setStreamStatusMessage("removeNode from offlinepool: " + idA);
+        }
+
+        if(this.nodes.has(idA)) {
+            this.nodes.delete(idA);
+            this.app.setStreamStatusMessage("removeNode from nodepool: " + idA);
+        }
+        
+        this.app.updateStatus();
+    }
+
+    setNodeOnline(idA) {
+        if(!this.nodes.has(idA)) {
+            console.error("setNodeOnline but not in nodes list:", idA);
+            return;
+        }
+
+        // check if not in nodesOnline set
+        if(!this.nodesOnline.has(idA)) {
+            this.nodesOnline.add(idA);
+            // TODO: add to graph
+            // graph.addNode(idA);
+
+            this.app.setStreamStatusMessage("setNodeOnline: " + idA)
+        } else {
+            this.app.setStreamStatusMessage("setNodeOnline skipped: " + idA)
+        }
+
+        // check if in nodesOffline set
+        if(this.nodesOffline.has(idA)) {
+            this.nodesOffline.delete(idA);
+
+            this.app.setStreamStatusMessage("removedFromOfflinepool: " + idA)
+        }
+
+        this.app.updateStatus();
+    }
+
+    setNodeOffline(idA) {
+        if(!this.nodes.has(idA)) {
+            console.error("setNodeOffline but not in nodes list:", idA);
+            return;
+        }
+
+        if(!this.nodesOffline.has(idA)) {
+            this.nodesOffline.add(idA);
+
+            this.app.setStreamStatusMessage("addedToOfflinepool: " + idA)
+        }
+
+        // check if node is currently online
+        if(this.nodesOnline.has(idA)) {
+            this.nodesOnline.delete(idA);
+            // TODO: remove from graph
+            // graph.removeNode(idA);
+
+            this.app.setStreamStatusMessage("removedFromOnlinepool: " + idA)
+        }
+
+        this.app.updateStatus();
+    }
+
+    connectNodes(idA, idB) {
+        
+    }
+
+    disconnectNodes(idA, idB) {
+
     }
 }
 
@@ -86,30 +126,52 @@ class Application {
 
     }
 
+    setStatusMessage(msg) {
+        if(this.rendered) {
+            this.frontend.setStatusMessage(msg);
+            console.log('%cStatusMessage: ' + msg, 'color: gray');
+        }
+    }
+
+    setStreamStatusMessage(msg) {
+        if(this.rendered) {
+            this.frontend.setStreamStatusMessage(msg);
+            console.log('%cStreamStatusMessage: ' + msg, 'color: gray');
+        }
+    }
+
+    updateStatus() {
+        // TODO: calculateDiscNodes();
+        this.setStatusMessage(this.ds.getStatusText());
+    }
+
     run() {
         let initialFloodTimerFunc = () => {
             if (this.floodNew > this.floodOld + 100) {
-                this.frontend.setStreamStatus("... received " + this.floodNew + " msg");
+                this.setStreamStatusMessage("... received " + this.floodNew + " msg");
                 this.floodOld = this.floodNew;
             } else {
                 clearInterval(this.initialFloodTimer);
-                this.rendered = true;
-
-                // kickoff rendering
-                // TODO: call renderer
-                
-                this.frontend.setStreamStatus("... received " + this.floodNew + " msg");
-                this.ds.updateStatus();
-                
-                // TODO: display nodes online and search field
-
-                // TODO: highlight node passed in url
+                this.startRendering();
             }
         }
 
         this.initialFloodTimer = setInterval(initialFloodTimerFunc, 500);
-
         this.initWebsocket();
+    }
+
+    startRendering() {
+        // kickoff rendering
+        this.rendered = true;
+
+        // TODO: call renderer
+        
+        this.setStreamStatusMessage("... received " + this.floodNew + " msg");
+        this.updateStatus();
+        
+        // TODO: display nodes online and search field
+
+        // TODO: highlight node passed in url
     }
 
     initWebsocket() {
@@ -118,14 +180,14 @@ class Application {
         );
     
         this.socket.onopen = () => {
-            this.frontend.setStatus("WebSocket opened. Loading ... ");
+            this.setStatusMessage("WebSocket opened. Loading ... ");
             setInterval(() => {
                 this.socket.send("_");
             }, 1000);
         };
     
         this.socket.onerror = (e) => {
-            this.frontend.setStatus("WebSocket error observed. Please reload.");
+            this.setStatusMessage("WebSocket error observed. Please reload.");
             console.error("WebSocket error observed", e);
           };
     
@@ -146,10 +208,10 @@ class Application {
                     }
                     break;
 
-                // case "a":
-                //     console.log("removeNode:", e.data.substr(1));
-                //     removeNode(e.data.substr(1));
-                //     break;
+                case "a":
+                    console.log("removeNode:", e.data.substr(1));
+                    this.ds.removeNode(e.data.substr(1));
+                    break;
     
                 // case "C":
                 //     console.log("connectNodes:", e.data.substr(1, 64), " - ", e.data.substr(65, 128));
@@ -166,10 +228,10 @@ class Application {
                     this.ds.setNodeOnline(e.data.substr(1));
                     break;
     
-                // case "o":
-                //     console.log("setNodeOffline:",e.data.substr(1));
-                //     setNodeOffline(e.data.substr(1));
-                //     break;
+                case "o":
+                    console.log("setNodeOffline:",e.data.substr(1));
+                    this.ds.setNodeOffline(e.data.substr(1));
+                    break;
             }
         }
     }

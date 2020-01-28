@@ -1,8 +1,13 @@
 const ANALYSIS_SERVER_URL = "116.202.49.178" + "/datastream";
 const NODE_ID_LENGTH = 64;
 
+// for some strange reason color formats for edges and nodes need to be different... careful!
 const EDGE_COLOR_DEFAULT = "#444444";
+const EDGE_COLOR_OUTGOING = "#336db5";
+const EDGE_COLOR_INCOMING = "#1c8d7f";
 const VERTEX_COLOR_DEFAULT = "0x666666";
+const VERTEX_COLOR_ACTIVE = "0x336db5";
+const VERTEX_COLOR_CONNECTED = "0x1c8d7f";
 const VERTEX_SIZE = 14;
 
 class Frontend {
@@ -12,6 +17,32 @@ class Frontend {
 
     setStreamStatusMessage(msg) {
         document.getElementById("streamstatus").innerHTML = msg;
+    }
+
+    showNodeLinks(node, neighbors) {
+        document.getElementById("nodeId").innerHTML = node + " in:" + neighbors.in.size + " out:" + neighbors.out.size;
+
+        let html = "incoming edges: ";
+        // incoming
+        for(let n of neighbors.in) { 
+            html += n + " &rarr; " + "NODE<br>";
+        }
+        if(neighbors.in.size == 0) { html += "no incoming edges!" }
+        document.getElementById("in").innerHTML = html;
+
+        html = "outgoing edges: ";
+        // outgoing
+        for(let n of neighbors.out) { 
+            html += "NODE" + " &rarr; " + n + "<br>";
+        }
+        if(neighbors.out.size == 0) { html += "no outgoing edges!" }
+        document.getElementById("out").innerHTML = html;
+    }
+
+    resetNodeLinks() {
+        document.getElementById("nodeId").innerHTML = "";
+        document.getElementById("in").innerHTML = "";
+        document.getElementById("out").innerHTML = "";
     }
 }
 
@@ -23,6 +54,7 @@ class Datastructure {
         this.nodesOffline = new Set();
         this.nodesDisconnected = new Set();
         this.connections = new Set();
+        this.neighbors = new Map();
     }
 
     getStatusText() {
@@ -70,6 +102,9 @@ class Datastructure {
             this.nodesOnline.add(idA);
             this.app.graph.addVertex(idA);
 
+            // create entry in neighbors map
+            this.neighbors[idA] = this.createNeighborsObject();
+
             this.app.setStreamStatusMessage("setNodeOnline: " + idA)
         } else {
             this.app.setStreamStatusMessage("setNodeOnline skipped: " + idA)
@@ -83,6 +118,13 @@ class Datastructure {
         }
 
         this.app.updateStatus();
+    }
+
+    createNeighborsObject() {
+        return {
+            in: new Set(),
+            out: new Set(),
+        }
     }
 
     setNodeOffline(idA) {
@@ -126,8 +168,9 @@ class Datastructure {
                 this.app.graph.addEdge(con, idA, idB);
                 this.connections.add(con);
 
-                // TODO: add additional data structure for fast neighbor lookup
-                // neighbors[id] = { in: set(), out: set() }
+                // update datastructure for fast neighbor lookup
+                this.neighbors[idA].out.add(idB);
+                this.neighbors[idB].in.add(idA);
 
                 this.app.setStreamStatusMessage("connectNodes: " + idA + " > " + idB);
                 this.app.updateStatus();
@@ -151,6 +194,10 @@ class Datastructure {
             this.connections.delete(con);
             this.app.graph.deleteEdge(con, idA, idB);
 
+            // update datastructure for fast neighbor lookup
+            this.neighbors[idA].out.delete(idB);
+            this.neighbors[idB].in.delete(idA);
+
             this.app.setStreamStatusMessage("disconnectNodes: " + idA + " > " + idB);
             this.app.updateStatus();
         } else {
@@ -160,7 +207,11 @@ class Datastructure {
 }
 
 class Graph {
-    constructor() {
+    constructor(app) {
+        this.app = app;
+        this.highlightedNodes = new Set();
+        this.highlightedLinks = new Set();
+
         this.graph = Viva.Graph.graph();
         this.graphics = Viva.Graph.View.webglGraphics();
         this.calculator = Viva.Graph.centrality();
@@ -188,6 +239,101 @@ class Graph {
             container: document.getElementById('graphc'),
             renderLinks: true
         });
+
+        this.initEvents();
+    }
+
+    updateNodeUiColor(node, color, save=true) {
+        let nodeUI = this.graphics.getNodeUI(node);
+        if (nodeUI != undefined) {
+            nodeUI.color = color;
+        }
+
+        if(save) {
+            this.highlightedNodes.add(node);
+        }
+    }
+
+    updateLinkUiColor(idA, idB, color, save=true) {
+        let con = this.graph.getLink(idA, idB);
+        
+        let linkUI = this.graphics.getLinkUI(con.id);
+        if (linkUI != undefined) {
+            linkUI.color = parseColor(color);
+        }
+
+        if(save) {
+            this.highlightedLinks.add(con.id);
+        }
+    }
+
+    updateLinkUiColorByLinkId(link, color, save=true) {
+        let linkUI = this.graphics.getLinkUI(link);
+        if (linkUI != undefined) {
+            linkUI.color = parseColor(color);
+        }
+
+        if(save) {
+            this.highlightedLinks.add(link);
+        }
+    }
+
+    showNodeLinks(selectedNode) {
+        let neighbors = this.app.ds.neighbors[selectedNode];
+
+        // highlight current node
+        this.updateNodeUiColor(selectedNode, VERTEX_COLOR_ACTIVE);
+
+        // highlight incoming connections
+        for(let n of neighbors.in) {
+            this.updateNodeUiColor(n, VERTEX_COLOR_CONNECTED);
+            this.updateLinkUiColor(n, selectedNode, EDGE_COLOR_INCOMING);
+        }
+
+        // highlight outcoming connections
+        for(let n of neighbors.out) {
+            this.updateNodeUiColor(n, VERTEX_COLOR_CONNECTED);
+            this.updateLinkUiColor(selectedNode, n, EDGE_COLOR_OUTGOING);
+        }
+
+        // update frontend
+        this.app.frontend.showNodeLinks(selectedNode, neighbors);
+    }
+
+    initEvents() {
+        this.events = Viva.Graph.webglInputEvents(this.graphics, this.graph);
+
+        this.events.mouseEnter((node) => {
+            this.graph.beginUpdate();
+
+            this.showNodeLinks(node.id);
+    
+            this.graph.endUpdate();
+            this.renderer.rerender();
+        });
+
+        this.events.mouseLeave(() => {
+            if(this.highlightedLinks > 0 || this.highlightedNodes.size > 0) {
+                // clean up display
+                this.graph.beginUpdate();
+                
+                this.resetPreviousColors()
+                this.app.frontend.resetNodeLinks();
+
+                this.graph.endUpdate();
+                this.renderer.rerender();
+            }
+        });
+    }
+
+    resetPreviousColors() {
+        for(let n of this.highlightedNodes) {
+            this.updateNodeUiColor(n, VERTEX_COLOR_DEFAULT, false);
+        }
+
+        for(let l of this.highlightedLinks) {
+            this.updateLinkUiColorByLinkId(l, EDGE_COLOR_DEFAULT, false);
+        }
     }
 
     addEdge(con, idA, idB) {
@@ -195,7 +341,7 @@ class Graph {
     }
 
     deleteEdge(con, idA, idB) {
-        // TODO: verify let conn = graph.getLink(idA, idB);
+        let con = this.graph.getLink(idA, idB);
         this.graph.removeLink(con);
     }
 
@@ -217,7 +363,7 @@ class Application {
         this.url = url;
         this.frontend = new Frontend();
         this.ds = new Datastructure(this);
-        this.graph = new Graph();
+        this.graph = new Graph(this);
 
         this.rendered = false; // is the application already rendered?
         this.floodNew = 0;
@@ -351,6 +497,28 @@ window.onload = () => {
 
 
 
+
+
+function parseColor(color) {
+    var parsedColor = 0x009ee8ff;
+
+    if (typeof color === 'string' && color) {
+        if (color.length === 4) { // #rgb
+            color = color.replace(/([^#])/g, '$1$1'); // duplicate each letter except first #.
+        }
+        if (color.length === 9) { // #rrggbbaa
+            parsedColor = parseInt(color.substr(1), 16);
+        } else if (color.length === 7) { // or #rrggbb.
+            parsedColor = (parseInt(color.substr(1), 16) << 8) | 0xff;
+        } else {
+            throw 'Color expected in hex format with preceding "#". E.g. #00ff00. Got value: ' + color;
+        }
+    } else if (typeof color === 'number') {
+        parsedColor = color;
+    }
+
+    return parsedColor;
+}
 
 
 /**

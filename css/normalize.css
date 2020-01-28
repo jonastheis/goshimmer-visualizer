@@ -389,7 +389,6 @@ template {
     font-weight: bold;
     text-align:right;
     color:#aaa;
-    z-index: 10;
 }
 
 #streamstatus {
@@ -398,28 +397,24 @@ template {
     font-size:12px;
     text-align:right;
     color:grey;
-    z-index: 10;
 }
 
-#nodestath {
-    position:relative;
-    margin:0;
-    padding:5px 0;
-    font-size:14px;
-    font-weight: bold;
-    text-decoration: underline;
-    text-align:right;
-    color:#aaa; 
-    z-index: -1;
+#nodeId {
+  margin:0;
+  padding:5px 0;
+  font-size:12px;
+  font-weight: bold;
+  text-decoration: underline;
+  text-align:right;
+  color:#aaa; 
 }
 
-#nodestat {
+#nodestats {
     position:relative;
     margin:0;
     font-size:12px;
     text-align:right;
     color:grey; 
-    z-index: -1;
 }
 
 #in, #out {

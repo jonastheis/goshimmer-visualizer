@@ -104,6 +104,7 @@ class Datastructure {
 
             // create entry in neighbors map
             this.neighbors[idA] = this.createNeighborsObject();
+            this.nodesDisconnected.add(idA);
 
             this.app.setStreamStatusMessage("setNodeOnline: " + idA)
         } else {
@@ -132,6 +133,8 @@ class Datastructure {
             console.error("setNodeOffline but not in nodes list:", idA);
             return;
         }
+
+        if(this.nodesDisconnected.has(idA)) { this.nodesDisconnected.delete(idA); }
 
         if(!this.nodesOffline.has(idA)) {
             this.nodesOffline.add(idA);
@@ -172,6 +175,10 @@ class Datastructure {
                 this.neighbors[idA].out.add(idB);
                 this.neighbors[idB].in.add(idA);
 
+                // remove from disconnected list
+                if(this.nodesDisconnected.has(idA)) { this.nodesDisconnected.delete(idA); }
+                if(this.nodesDisconnected.has(idB)) { this.nodesDisconnected.delete(idB); }
+
                 this.app.setStreamStatusMessage("connectNodes: " + idA + " > " + idB);
                 this.app.updateStatus();
             } else {
@@ -198,11 +205,21 @@ class Datastructure {
             this.neighbors[idA].out.delete(idB);
             this.neighbors[idB].in.delete(idA);
 
+            // check if nodes still have neighbors
+            if(!this.hasNodeNeighbors(idA)) { this.nodesDisconnected.add(idA); }
+            if(!this.hasNodeNeighbors(idB)) { this.nodesDisconnected.add(idB); }
+
             this.app.setStreamStatusMessage("disconnectNodes: " + idA + " > " + idB);
             this.app.updateStatus();
         } else {
             console.log("disconnectNodes skipped: either node not online", idA, idB);
         }
+    }
+
+    hasNodeNeighbors(idA) {
+        let neighbors = this.neighbors[idA];
+        console.log(neighbors.in.size + neighbors.out.size)
+        return ((neighbors.in.size + neighbors.out.size) > 0)
     }
 }
 
@@ -386,7 +403,6 @@ class Application {
     }
 
     updateStatus() {
-        // TODO: calculateDiscNodes();
         this.setStatusMessage(this.ds.getStatusText());
     }
 

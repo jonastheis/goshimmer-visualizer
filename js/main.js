@@ -1,4 +1,5 @@
 const ANALYSIS_SERVER_URL = "116.202.49.178" + "/datastream";
+const NODE_ID_LENGTH = 64;
 
 class Frontend {
     setStatusMessage(msg) {
@@ -105,12 +106,55 @@ class Datastructure {
         this.app.updateStatus();
     }
 
-    connectNodes(idA, idB) {
-        
+    connectNodes(con, idA, idB) {
+        if(!this.nodes.has(idA)) {
+            console.error("connectNodes but not in nodes list:", idA, con);
+            return;
+        }
+        if(!this.nodes.has(idB)) {
+            console.error("connectNodes but not in nodes list:", idB, con);
+            return;
+        }
+
+        if(this.connections.has(con)) {
+            this.app.setStreamStatusMessage("connectNodes skipped: " + idA + " > " + idB);
+        } else {
+            // add new connection only if both nodes are online
+            if(this.nodesOnline.has(idA) && this.nodesOnline.has(idB) && idA != idB) {
+                // TODO: graph.addLink(idA, idB, con);
+                this.connections.add(con);
+
+                // TODO: add additional data structure for fast neighbor lookup
+                // neighbors[id] = { in: set(), out: set() }
+
+                this.app.setStreamStatusMessage("connectNodes: " + idA + " > " + idB);
+                this.app.updateStatus();
+            } else {
+                console.log("connectNodes skipped: either node not online", idA, idB);
+            }
+        }
     }
 
-    disconnectNodes(idA, idB) {
+    disconnectNodes(con, idA, idB) {
+        if(!this.nodes.has(idA)) {
+            console.error("disconnectNodes but not in nodes list:", idA, con);
+            return;
+        }
+        if(!this.nodes.has(idB)) {
+            console.error("disconnectNodes but not in nodes list:", idB, con);
+            return;
+        }
 
+        if(this.connections.has(con)) {
+            // TODO: remove connection in graph
+            // let conn = graph.getLink(idA, idB);
+            // graph.removeLink(conn);
+
+            this.app.setStreamStatusMessage("disconnectNodes: " + idA + " > " + idB);
+            this.app.updateStatus();
+        } else {
+            console.log("disconnectNodes skipped: either node not online", idA, idB);
+        }
     }
 }
 
@@ -192,45 +236,51 @@ class Application {
           };
     
         this.socket.onmessage = (e) => {
+            let type = e.data[0];
+            let data = e.data.substr(1);
+            let idA = data.substr(0, NODE_ID_LENGTH);
+            let idB;
             
             if(!this.rendered) { this.floodNew++; }
 
-            switch (e.data[0]) {
+            switch (type) {
                 case "_":
                     //do nothing - its just a ping
                     break;
     
                 case "A":
-                    console.log("addNode:", e.data.substr(1));
+                    console.log("addNode event:", idA);
                     // filter out empty ids
-                    if(e.data.length == 65) {
-                        this.ds.addNode(e.data.substr(1));
+                    if(idA.length == NODE_ID_LENGTH) {
+                        this.ds.addNode(idA);
                     }
                     break;
 
                 case "a":
-                    console.log("removeNode:", e.data.substr(1));
-                    this.ds.removeNode(e.data.substr(1));
+                    console.log("removeNode event:", idA);
+                    this.ds.removeNode(idA);
                     break;
     
-                // case "C":
-                //     console.log("connectNodes:", e.data.substr(1, 64), " - ", e.data.substr(65, 128));
-                //     connectNodes(e.data.substr(1, 64), e.data.substr(65, 128));
-                //     break;
+                case "C":
+                    idB = data.substr(NODE_ID_LENGTH, NODE_ID_LENGTH);
+                    console.log("connectNodes event:", idA, " - ", idB);
+                    this.ds.connectNodes(idA+idB, idA, idB);
+                    break;
     
-                // case "c":
-                //     console.log("disconnectNodes:",e.data.substr(1, 64), " - ", e.data.substr(65, 128));
-                //     disconnectNodes(e.data.substr(1, 64), e.data.substr(65, 128));
-                //     break;
+                case "c":
+                    idB = data.substr(NODE_ID_LENGTH, NODE_ID_LENGTH);
+                    console.log("disconnectNodes event:", idA, " - ", idB);
+                    this.ds.disconnectNodes(idA+idB, idA, idB);
+                    break;
     
                 case "O":
-                    console.log("setNodeOnline:",e.data.substr(1));
-                    this.ds.setNodeOnline(e.data.substr(1));
+                    console.log("setNodeOnline event:", idA);
+                    this.ds.setNodeOnline(idA);
                     break;
     
                 case "o":
-                    console.log("setNodeOffline:",e.data.substr(1));
-                    this.ds.setNodeOffline(e.data.substr(1));
+                    console.log("setNodeOffline event:", idA);
+                    this.ds.setNodeOffline(idA);
                     break;
             }
         }

@@ -379,7 +379,10 @@ template {
 #info {
     position:absolute;
     right: 0;
-    padding:10px;	
+    padding:10px;
+
+    font-size:12px;
+    text-align:right;
 }
 
 #status {
@@ -387,33 +390,63 @@ template {
     margin:0;
     font-size:14px;
     font-weight: bold;
-    text-align:right;
     color:#aaa;
+    z-index: 10;
 }
 
 #streamstatus {
     position:relative;
-    margin:0;
-    font-size:12px;
-    text-align:right;
+    margin: 2px 0 0 0;
     color:grey;
+}
+
+#search {
+    position:relative;
+    margin:10px 0 3px 0;
+}
+
+#nodesOnlineWrapper{
+    position:relative;
+    height: 80px;
+    overflow-y: scroll;
+    margin:0;
+    padding: 5px 0;
+
+    color:#aaa;
+    z-index: 10;
+}
+
+#nodesOnline {
+    display: inline-block;
+    /* background: black; */
+}
+
+#nodesOnline span {
+    display: block;
+    padding: 5px 5px;
+    border-bottom: 1px dashed #7c7c7c;
+    cursor: pointer;
+}
+
+#nodesOnline span.active {
+    color: #336db5;
+}
+
+#nodesOnline span:first-child {
+    border-top: 1px dashed #7c7c7c;
 }
 
 #nodeId {
   margin:0;
   padding:5px 0;
-  font-size:12px;
   font-weight: bold;
   text-decoration: underline;
-  text-align:right;
   color:#aaa; 
 }
 
 #nodestats {
     position:relative;
     margin:0;
-    font-size:12px;
-    text-align:right;
     color:grey; 
 }
 

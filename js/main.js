@@ -11,6 +11,23 @@ const VERTEX_COLOR_CONNECTED = "0x1c8d7f";
 const VERTEX_SIZE = 14;
 
 class Frontend {
+    constructor(app) {
+        this.app = app;
+        document.addEventListener('click', (e) => {
+            if (hasClass(e.target, 'n')) {
+                let htmlNode = e.target;
+                let nodeId = htmlNode.innerHTML;
+
+                if(hasClass(htmlNode, 'active')) {
+                    this.app.resetActiveNode();
+                    return;
+                }
+
+                this.app.setActiveNode(nodeId, true);
+            }
+        }, false);
+    }
+
     setStatusMessage(msg) {
         document.getElementById("status").innerHTML = msg;
     }
@@ -39,10 +56,41 @@ class Frontend {
         document.getElementById("out").innerHTML = html;
     }
 
+    setActiveNode(nodeId, updateHash=false) {
+        this.activeNode = nodeId;
+        if(updateHash) {
+            // TODO: check this
+            // history.replaceState(null, null, nodeId);
+            // history.pushState(null, "", window.location.pathname + nodeId)
+        }
+
+        let neighbors = this.app.ds.neighbors[nodeId];
+        this.showNodeLinks(nodeId, neighbors);
+    }
+
+    resetActiveNode() {
+        // currently active node will lose class at next refresh
+        this.activeNode = '';
+        history.replaceState(null, null, ' '); // reset location hash
+        this.resetNodeLinks();
+    }
+
     resetNodeLinks() {
         document.getElementById("nodeId").innerHTML = "";
         document.getElementById("in").innerHTML = "";
         document.getElementById("out").innerHTML = "";
+    }
+
+    displayNodesOnline(nodesOnline) {
+        let html = [];
+        for(let n of nodesOnline) {
+            if(n == this.activeNode) {
+                html.push('<span class="n active">' + n + "</span>");
+            } else {
+                html.push('<span class="n">' + n + "</span>");
+            }
+        }
+        document.getElementById("nodesOnline").innerHTML = html.join("");
     }
 }
 
@@ -219,7 +267,6 @@ class Datastructure {
 
     hasNodeNeighbors(idA) {
         let neighbors = this.neighbors[idA];
-        console.log(neighbors.in.size + neighbors.out.size)
         return ((neighbors.in.size + neighbors.out.size) > 0)
     }
 }
@@ -297,6 +344,13 @@ class Graph {
     }
 
     showNodeLinks(selectedNode) {
+        if(this.highlightedLinks > 0 || this.highlightedNodes.size > 0) {
+            // clean up display
+            this.app.resetActiveNode();
+        }
+
+        this.graph.beginUpdate();
+
         let neighbors = this.app.ds.neighbors[selectedNode];
 
         // highlight current node
@@ -314,37 +368,28 @@ class Graph {
             this.updateLinkUiColor(selectedNode, n, EDGE_COLOR_OUTGOING);
         }
 
-        // update frontend
-        this.app.frontend.showNodeLinks(selectedNode, neighbors);
+        this.graph.endUpdate();
+        this.renderer.rerender();
     }
 
     initEvents() {
         this.events = Viva.Graph.webglInputEvents(this.graphics, this.graph);
 
         this.events.mouseEnter((node) => {
-            this.graph.beginUpdate();
-
-            this.showNodeLinks(node.id);
-    
-            this.graph.endUpdate();
-            this.renderer.rerender();
+            this.app.setActiveNode(node.id)
         });
 
         this.events.mouseLeave(() => {
             if(this.highlightedLinks > 0 || this.highlightedNodes.size > 0) {
                 // clean up display
-                this.graph.beginUpdate();
-                
-                this.resetPreviousColors()
-                this.app.frontend.resetNodeLinks();
-
-                this.graph.endUpdate();
-                this.renderer.rerender();
+                this.app.resetActiveNode();
             }
         });
     }
 
     resetPreviousColors() {
+        this.graph.beginUpdate();
+
         for(let n of this.highlightedNodes) {
             this.updateNodeUiColor(n, VERTEX_COLOR_DEFAULT, false);
         }
@@ -352,6 +397,9 @@ class Graph {
         for(let l of this.highlightedLinks) {
             this.updateLinkUiColorByLinkId(l, EDGE_COLOR_DEFAULT, false);
         }
+
+        this.graph.endUpdate();
+        this.renderer.rerender();
     }
 
     addEdge(con, idA, idB) {
@@ -379,7 +427,7 @@ class Graph {
 class Application {
     constructor(url) {
         this.url = url;
-        this.frontend = new Frontend();
+        this.frontend = new Frontend(this);
         this.ds = new Datastructure(this);
         this.graph = new Graph(this);
 
@@ -387,6 +435,16 @@ class Application {
         this.floodNew = 0;
         this.floodOld = 0;
 
+    }
+
+    setActiveNode(nodeId, updateHash=false) {
+        this.graph.showNodeLinks(nodeId);
+        this.frontend.setActiveNode(nodeId, updateHash);
+    }
+
+    resetActiveNode() {
+        this.graph.resetPreviousColors()
+        this.frontend.resetActiveNode();
     }
 
     setStatusMessage(msg) {
@@ -405,6 +463,10 @@ class Application {
 
     updateStatus() {
         this.setStatusMessage(this.ds.getStatusText());
+    }
+
+    showOnlineNodes() {
+        setInterval(() => { this.frontend.displayNodesOnline(this.ds.nodesOnline) }, 300);
     }
 
     run() {
@@ -431,9 +493,14 @@ class Application {
         this.setStreamStatusMessage("... received " + this.floodNew + " msg");
         this.updateStatus();
         
-        // TODO: display nodes online and search field
+        // display nodes online and search field
+        this.showOnlineNodes();
 
-        // TODO: highlight node passed in url
+        // highlight node passed in url
+        let nodeId = window.location.hash.substring(1);
+        if(nodeId) {
+            this.setActiveNode(nodeId);
+        }
     }
 
     initWebsocket() {
@@ -514,7 +581,9 @@ window.onload = () => {
 
 
 
-
+function hasClass(elem, className) {
+    return elem.classList.contains(className);
+}
 
 function parseColor(color) {
     var parsedColor = 0x009ee8ff;

@@ -341,8 +341,8 @@ class Graph {
     }
 
     deleteEdge(con, idA, idB) {
-        let con = this.graph.getLink(idA, idB);
-        this.graph.removeLink(con);
+        let link = this.graph.getLink(idA, idB);
+        this.graph.removeLink(link);
     }
 
     addVertex(idA) {

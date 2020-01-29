@@ -13,6 +13,8 @@ const VERTEX_SIZE = 14;
 class Frontend {
     constructor(app) {
         this.app = app;
+        this.activeNode = '';
+        this.searchTerm = '';
         document.addEventListener('click', (e) => {
             if (hasClass(e.target, 'n')) {
                 let htmlNode = e.target;
@@ -23,9 +25,55 @@ class Frontend {
                     return;
                 }
 
+                // TODO: add active class and remove possible others (necessary for search feature)
+
                 this.app.setActiveNode(nodeId, true);
             }
         }, false);
+
+        this.initSearch();
+    }
+
+    initSearch() {
+        document.getElementById("search").addEventListener('keyup', (e) => {
+            let value = e.target.value.trim().toLowerCase();
+
+            if(value === "") {
+                this.resetSearch();
+                return;
+            }
+
+            this.searchTerm = value;
+            
+            let results = new Set();
+            for(let n of this.app.ds.nodesOnline) {
+                if(n.startsWith(value)) {
+                    results.add(n);
+                }
+            }
+            
+            if(results.size == 1) {
+                // little hack to access element
+                let n = results.values().next().value;
+                this.app.setActiveNode(n, true);
+            }
+
+            this.displayNodesOnline(results);
+        });
+
+        document.getElementById("clear").addEventListener("click", (e) => {
+            this.resetSearch();
+        });
+    }
+
+    resetSearch() {
+        document.getElementById("search").value = "";
+        this.searchTerm = '';
+        this.app.resetActiveNode();
+    }
+
+    showSearchField() {
+        document.getElementById('searchWrapper').style.cssText = "display:block;"
     }
 
     setStatusMessage(msg) {
@@ -464,7 +512,12 @@ class Application {
     }
 
     showOnlineNodes() {
-        setInterval(() => { this.frontend.displayNodesOnline(this.ds.nodesOnline) }, 300);
+        setInterval(() => { 
+            if(this.frontend.searchTerm.length > 0) {
+                return;
+            }
+            this.frontend.displayNodesOnline(this.ds.nodesOnline) 
+        }, 300);
     }
 
     run() {
@@ -492,6 +545,7 @@ class Application {
         this.updateStatus();
         
         // display nodes online and search field
+        this.frontend.showSearchField();
         this.showOnlineNodes();
 
         // highlight node passed in url

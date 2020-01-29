@@ -59,9 +59,7 @@ class Frontend {
     setActiveNode(nodeId, updateHash=false) {
         this.activeNode = nodeId;
         if(updateHash) {
-            // TODO: check this
-            // history.replaceState(null, null, nodeId);
-            // history.pushState(null, "", window.location.pathname + nodeId)
+            history.replaceState(null, null, '#'+nodeId);
         }
 
         let neighbors = this.app.ds.neighbors[nodeId];

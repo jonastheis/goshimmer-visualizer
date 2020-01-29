@@ -166,9 +166,17 @@ class Datastructure {
     }
 
     removeNode(idA) {
+        if(!this.nodes.has(idA)) {
+            console.error("removeNode but not in nodes list:", idA);
+            return;
+        }
+
+        if(this.nodesDisconnected.has(idA)) { this.nodesDisconnected.delete(idA); }
+        if(this.neighbors.has(idA)) { this.neighbors.delete(idA); }
+
         if(this.nodesOnline.has(idA)) {
             this.nodesOnline.delete(idA);
-            this.app.graph.deleteNode(idA);
+            this.app.graph.deleteVertex(idA);
 
             this.app.setStreamStatusMessage("removeNode from onlinepool: " + idA);
         }
@@ -230,6 +238,7 @@ class Datastructure {
         }
 
         if(this.nodesDisconnected.has(idA)) { this.nodesDisconnected.delete(idA); }
+        if(this.neighbors.has(idA)) { this.neighbors.delete(idA); }
 
         if(!this.nodesOffline.has(idA)) {
             this.nodesOffline.add(idA);

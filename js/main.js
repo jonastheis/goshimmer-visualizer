@@ -128,6 +128,9 @@ class Frontend {
     }
 
     displayNodesOnline(nodesOnline) {
+        // this line might be a performance killer!
+        nodesOnline = Array.from(nodesOnline).sort();
+
         let html = [];
         for(let n of nodesOnline) {
             if(n == this.activeNode) {

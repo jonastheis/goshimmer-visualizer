@@ -166,6 +166,9 @@ class Datastructure {
             this.app.setStreamStatusMessage("addedToNodepool: " + idA);
             this.app.updateStatus();
         }
+
+        // TODO: temporary fix for faulty analysis server. do not set nodes offline.
+        this.setNodeOnline(idA);
     }
 
     removeNode(idA) {
@@ -235,6 +238,9 @@ class Datastructure {
     }
 
     setNodeOffline(idA) {
+        // TODO: temporary fix for faulty analysis server. do not set nodes offline.
+        return;
+
         if(!this.nodes.has(idA)) {
             console.error("setNodeOffline but not in nodes list:", idA);
             return;

@@ -379,14 +379,16 @@ class Graph {
 
     updateLinkUiColor(idA, idB, color, save=true) {
         let con = this.graph.getLink(idA, idB);
-        
-        let linkUI = this.graphics.getLinkUI(con.id);
-        if (linkUI != undefined) {
-            linkUI.color = parseColor(color);
-        }
 
-        if(save) {
-            this.highlightedLinks.add(con.id);
+        if(con != null) {
+            let linkUI = this.graphics.getLinkUI(con.id);
+            if (linkUI != undefined) {
+                linkUI.color = parseColor(color);
+            }
+
+            if(save) {
+                this.highlightedLinks.add(con.id);
+            }
         }
     }
 
@@ -637,9 +639,10 @@ class Application {
 }
 
 
-
+let app;
 window.onload = () => {
-    new Application(ANALYSIS_SERVER_URL).run();
+    app = new Application(ANALYSIS_SERVER_URL);
+    app.run()
 }
 
 
